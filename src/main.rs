@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
-mod helpers;
-use helpers::tencryptimage;
-use helpers::imagedecrypttext;
+mod steg;
+use steg::tencryptimage;
+use steg::imagedecrypttext;
 
 // default clap template for making the code into a cli
 // basically copy paste from https://docs.rs/clap/latest/clap/
@@ -15,7 +15,10 @@ fn main() {
             output,
             text,
         } => {
-            let _ = tencryptimage(&text, &input, &output);
+            match tencryptimage(&text, &input, &output) {
+                Ok(_) => println!("Encrypted successfully"),
+                Err(err) => eprintln!("Error: {err}"),
+            }
         }
 
         Commands::Decrypt {

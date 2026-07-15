@@ -991,6 +991,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "image",
+ "wasm-bindgen",
 ]
 
 [[package]]

@@ -3,6 +3,14 @@ name = "stegEncoder"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "stegEncoder"
+path = "src/main.rs"
+
 [dependencies]
 clap = {version = "4.6.2", features = ["derive"]}
 image = "0.25.10"
+wasm-bindgen = "0.2"
