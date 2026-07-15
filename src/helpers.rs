@@ -1,21 +1,26 @@
 use image::{self, RgbImage};
 use std::mem::size_of;
 
-const SIGNATURE : &[u8] = b"stegEncoder";
+// rust image documentation at https://docs.rs/image/latest/image/
+// other useful examples can be found in the README of https://github.com/image-rs/image
+
+
+const SIGNATURE : &[u8] = b"stegEncoder"; // a signature to make sure that the image being read will be encoded by this same encoder
 const HEADERSIZE : usize = SIGNATURE.len() + size_of::<u32>();
-pub fn tencryptimage(text : &str, imagePath : &str, outputPath : &str)
+pub fn tencryptimage(text : &str, imagePath : &str, outputPath : &str) -> Result<(), String>
 {
     /*
      tencryptimage (TEXT ENCRYPT IMAGE) (string text, string imagePath, string outputPath)
      This function encrypts text into the lsb of an image using steganography
      */
     // opening the image and converting it to a rgb with 8 bit channels
-    let mut img = image::open(imagePath).unwrap().to_rgb8();
+    let mut img = image::open(imagePath).map_err(|e| e.to_string())?.to_rgb8();
     let imageSize = (img.height() as usize * img.width() as usize * 3) / 8;
     // checking if image is big enough to store the text
-    if imageSize < (text.as_bytes().len() + HEADERSIZE)
+    let textSize = text.as_bytes().len() + HEADERSIZE;
+    if imageSize < textSize
     {
-        panic!("IMAGE TOO SMALL");
+        return Err(format!("Image size is {imageSize} and the text length is {textSize}. Try get a bigger image or use a smaller text").to_string());
     }
     // getting the length of the text and making it into bytes
     let length = text.as_bytes().len() as u32; // u32 so that it is the same for all operating systems
@@ -46,12 +51,13 @@ pub fn tencryptimage(text : &str, imagePath : &str, outputPath : &str)
             i+=1;
         }
     }
-    img.save(outputPath).unwrap();
+    img.save(outputPath).map_err(|e| e.to_string())?;
+    return Ok(());
 }
 
 
 
-pub fn imagedecrypttext(imagePath : &str) -> String
+pub fn imagedecrypttext(imagePath : &str) -> Result<String, String>
 {
     /*
      * imagedecrypttext (IMAGE DECRYPTION to TEXT) (String imagePath)
@@ -59,30 +65,32 @@ pub fn imagedecrypttext(imagePath : &str) -> String
      * essentially the inverse of tencryptimage()
      */
     // opens image
-    let img = image::open(imagePath).unwrap().to_rgb8();
+    let img = image::open(imagePath).map_err(|e| e.to_string())?.to_rgb8();
     let mut bitPos = 0;
-    let signature = readBytes(&img, SIGNATURE.len(), &mut bitPos);
+    let signature = readBytes(&img, SIGNATURE.len(), &mut bitPos)?;
+    // check if the image has the signature
     if signature != SIGNATURE
     {
-        panic!("INVALID IMAGE");
+        return Err("Invalid image, make sure this image was encoded by this same steganography encoder".to_string());
     }
-    let lengthBytes = readBytes(&img, size_of::<u32>(), &mut bitPos);
+    let lengthBytes = readBytes(&img, size_of::<u32>(), &mut bitPos)?;
     let length = u32::from_be_bytes([lengthBytes[0],lengthBytes[1],lengthBytes[2],lengthBytes[3]]) as usize;
     let imageSize = (img.height() as usize * img.width() as usize * 3) / 8;
-    if length + HEADERSIZE > imageSize.try_into().unwrap()
+    if length + HEADERSIZE > imageSize
     {
-        panic!("INVALID IMAGE");
+        return Err("Invalid image, make sure this image was encoded by this same steganography encoder".to_string());
     }
-    let text = readBytes(&img, length,&mut bitPos);
-    return String::from_utf8(text).unwrap();
+    let text = readBytes(&img, length,&mut bitPos)?;
+    return String::from_utf8(text).map_err(|e| e.to_string());
 }
 
 
 
-fn readBytes(img : &RgbImage, amount : usize, startBit: &mut usize) -> Vec<u8>
+// a function that is made for the sake of abstraction as a result of using it multiple times in
+// other functions, it serves as a function that reads an image starting from a specific bit for a
+// specified amount of bits
+fn readBytes(img : &RgbImage, amount : usize, startBit: &mut usize)-> Result<Vec<u8>, String>
 {
-
-    // let img = image::open(imagePath).unwrap().to_rgb8();
     let mut bytes = Vec::new();
     let mut currentByte: u8 = 0;
     let mut nOfBits = 0;
@@ -101,10 +109,11 @@ fn readBytes(img : &RgbImage, amount : usize, startBit: &mut usize) -> Vec<u8>
             nOfBits = 0;
             if bytes.len() == amount
             {
+                //changing the value of the startBit variable to be the amounts Byte equivalent
                 *startBit += amount * 8;
-                return bytes;
+                return Ok(bytes);
             }
         }
     }
-    panic!("IMAGE DOES NOT CONTAIN ENOUGH DATA");
-    }
+    return Err("Image does not contain enough data.".to_string());
+}
