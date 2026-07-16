@@ -52,6 +52,7 @@ export default function Home() {
             <div {...getRootProps()} className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition ${isDragActive ? "border-zinc-400 bg-zinc-800" : "border-zinc-700 bg-zinc-900 hover:bg-zinc-800"}`}>
               <input {...getInputProps()} />
               <p className="text-zinc-300">{file ? file.name : "Drag and drop an image here, or click to select"}</p>
+              <p className="mt-2 text-sm text-zinc-500">Only PNG/JPEG images are supported</p>
             </div>
 
             <button className="px-10 py-4 text-lg rounded-xl border border-zinc-700 bg-zinc-700 text-white transition hover:bg-zinc-600 disabled:cursor-not-allowed disabled:opacity-50" disabled={!file || !text} onClick={async () => {
