@@ -7,14 +7,15 @@ use std::mem::size_of;
 
 const SIGNATURE : &[u8] = b"stegEncoder"; // a signature to make sure that the image being read will be encoded by this same encoder
 const HEADERSIZE : usize = SIGNATURE.len() + size_of::<u32>();
-pub fn tencryptimage(text : &str, imagePath : &str, outputPath : &str) -> Result<(), String>
+pub fn tencryptimage(text: &str, imageData: &[u8]) -> Result<Vec<u8>, String>
 {
     /*
      tencryptimage (TEXT ENCRYPT IMAGE) (string text, string imagePath, string outputPath)
      This function encrypts text into the lsb of an image using steganography
      */
     // opening the image and converting it to a rgb with 8 bit channels
-    let mut img = image::open(imagePath).map_err(|e| e.to_string())?.to_rgb8();
+    // let mut img = image::open(imagePath).map_err(|e| e.to_string())?.to_rgb8(); // this one is for local use
+    let mut img = image::load_from_memory(imageData).map_err(|e| e.to_string())?.to_rgb8(); // this one is for use in nextjs website
     let imageSize = (img.height() as usize * img.width() as usize * 3) / 8;
     // checking if image is big enough to store the text
     let textSize = text.as_bytes().len() + HEADERSIZE;
@@ -51,13 +52,20 @@ pub fn tencryptimage(text : &str, imagePath : &str, outputPath : &str) -> Result
             i+=1;
         }
     }
-    img.save(outputPath).map_err(|e| e.to_string())?;
-    return Ok(());
+    let mut output = Vec::new();
+
+    img.write_to(
+        &mut std::io::Cursor::new(&mut output),
+        image::ImageFormat::Png
+    )
+        .map_err(|e| e.to_string())?;
+
+    return Ok(output);
 }
 
 
 
-pub fn imagedecrypttext(imagePath : &str) -> Result<String, String>
+pub fn imagedecrypttext(imageData: &[u8]) -> Result<String, String>
 {
     /*
      * imagedecrypttext (IMAGE DECRYPTION to TEXT) (String imagePath)
@@ -65,7 +73,8 @@ pub fn imagedecrypttext(imagePath : &str) -> Result<String, String>
      * essentially the inverse of tencryptimage()
      */
     // opens image
-    let img = image::open(imagePath).map_err(|e| e.to_string())?.to_rgb8();
+    // let img = image::open(imagePath).map_err(|e| e.to_string())?.to_rgb8(); // for local use
+    let img = image::load_from_memory(imageData).map_err(|e| e.to_string())?.to_rgb8(); // for use in nextjs site 
     let mut bitPos = 0;
     let signature = readBytes(&img, SIGNATURE.len(), &mut bitPos)?;
     // check if the image has the signature
