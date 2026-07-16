@@ -2,7 +2,6 @@ import init, { encrypt, decrypt } from "../wasm/stegEncoder";
 
 let initialized = false;
 
-// makes sure that the rust file is initialised before it is used
 export async function initSteg() {
   if (!initialized) {
     await init();
@@ -11,6 +10,8 @@ export async function initSteg() {
 }
 
 export async function encodeImage(file: File, text: string): Promise<Blob> {
+  await initSteg();
+
   const bytes = new Uint8Array(await file.arrayBuffer());
 
   const encoded = encrypt(text, bytes);
@@ -21,7 +22,6 @@ export async function encodeImage(file: File, text: string): Promise<Blob> {
   return new Blob([buffer], { type: "image/png" });
 }
 
-// the rust decode function
 export async function decodeImage(file: File): Promise<string> {
   await initSteg();
 
